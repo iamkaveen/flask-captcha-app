@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Form</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #181414;
+        }
+        .container {
+            background: rgb(248, 248, 249);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        input {
+            width: 80%;
+            padding: 8px;
+            margin: 5px;
+        }
+        button {
+            padding: 10px;
+            background: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .captcha-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .captcha-container img {
+            border: 1px solid #ccc;
+        }
+        .message {
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Login Form</h2>
+
+    <label>Username:</label>
+    <input type="text" id="username"><br>
+
+    <label>Password:</label>
+    <input type="password" id="password"><br>
+
+    <label>Enter the text from the image:</label>
+    <div class="captcha-container">
+        <img id="captcha-image" src="data:image/png;base64,{{ captcha_image }}" alt="CAPTCHA">
+        <button id="refresh-btn">🔄</button>
+    </div>
+
+    <input type="text" id="captcha"><br>
+
+    <button id="fill-btn">Fill</button>
+    <button id="login-btn">Login</button>
+
+    <p id="message" class="message"></p>
+</div>
+
+<script>
+    let currentCaptcha = "{{ captcha_text }}"; 
+
+    document.getElementById("refresh-btn").addEventListener("click", function() {
+        fetch('/reload_captcha')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("captcha-image").src = "data:image/png;base64," + data.captcha_image;
+                document.getElementById("captcha").value = "";
+                currentCaptcha = data.captcha_text;
+            });
+    });
+
+    document.getElementById("fill-btn").addEventListener("click", function() {
+        document.getElementById("captcha").value = currentCaptcha;
+    });
+
+    document.getElementById("login-btn").addEventListener("click", function () {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        const captcha = document.getElementById("captcha").value;
+        const message = document.getElementById("message");
+
+        if (!username || !password || !captcha) {
+            message.innerText = "Please fill all fields!";
+            message.className = "message error";
+            return;
+        }
+
+        fetch("/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&captcha=${encodeURIComponent(captcha)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            message.innerText = data.message;
+            message.className = data.success ? "message success" : "message error";
+
+            if (!data.success) {
+                document.getElementById("captcha").value = "";
+                document.getElementById("refresh-btn").click();
+            }
+        })
+        .catch(error => {
+            message.innerText = "Login request failed!";
+            message.className = "message error";
+            console.error("Login error:", error);
+        });
+    });
+</script>
+
+</body>
+</html>
